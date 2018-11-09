@@ -1,0 +1,134 @@
+SET client_min_messages TO warning;
+--This is for testing functionality of timezone-specific timestamps
+SET TIMEZONE TO 'America/Chicago';
+/***
+Try this odd case to be sure we process all events in order correctly 
+***/
+UPDATE test.orders
+SET total = 1000.00
+WHERE order_id = 3;
+DELETE FROM test.orders WHERE order_id = 3;
+INSERT INTO test.orders (order_id, customer_id, order_date, total)
+VALUES (3, 5, '2018-04-12', 2000.00);
+--Move the mock replication stream forward to now
+SELECT pglogical_ticker.tick();
+ tick 
+------
+ 
+(1 row)
+
+SELECT fact_loader.worker();
+ worker 
+--------
+ t
+(1 row)
+
+SELECT fact_loader.worker();
+ worker 
+--------
+ t
+(1 row)
+
+SELECT fact_loader.worker();
+ worker 
+--------
+ t
+(1 row)
+
+SELECT fact_loader.worker();
+ worker 
+--------
+ t
+(1 row)
+
+SELECT fact_loader.worker();
+ worker 
+--------
+ t
+(1 row)
+
+SELECT fact_loader.worker();
+ worker 
+--------
+ t
+(1 row)
+
+SELECT fact_loader.worker();
+ worker 
+--------
+ t
+(1 row)
+
+SELECT customer_id, phone, age, last_order_id, order_product_count, order_product_promo_ids
+FROM test_fact.customers_fact
+ORDER BY customer_id;
+ customer_id |   phone    | age | last_order_id | order_product_count | order_product_promo_ids 
+-------------+------------+-----+---------------+---------------------+-------------------------
+           1 | 0001234561 |  35 |             4 |                   3 | 
+           2 | 0001234562 |  42 |               |                   0 | 
+           4 | 0001234564 |  35 |               |                   0 | 
+           5 | 0001234565 |  35 |             3 |                   0 | 
+           6 | 0001234566 |  35 |               |                   0 | 
+           7 | 0001234567 |  35 |               |                   0 | 
+           8 | 0001234568 |  35 |               |                   0 | 
+           9 | 0001234569 |  35 |               |                   0 | 
+          10 | 0001234577 |  35 |               |                   0 | 
+(9 rows)
+
+SELECT order_id, customer_id, order_date, total, is_reorder
+FROM test_fact.orders_fact
+ORDER BY order_id;
+ order_id | customer_id | order_date |  total  | is_reorder 
+----------+-------------+------------+---------+------------
+        1 |           1 | 04-10-2018 |  100.00 | f
+        3 |           5 | 04-12-2018 | 2000.00 | f
+        4 |           1 | 04-13-2018 |  100.00 | f
+(3 rows)
+
+SELECT order_id, customer_id, phone, age, max_order_date, min_total
+FROM test_fact.customersorders_fact
+ORDER BY order_id;
+ order_id | customer_id |   phone    | age | max_order_date | min_total 
+----------+-------------+------------+-----+----------------+-----------
+        1 |           1 | 0001234561 |  35 | 04-10-2018     |    100.00
+        3 |           5 | 0001234565 |  35 | 04-12-2018     |   2000.00
+        4 |           1 | 0001234561 |  35 | 04-13-2018     |    100.00
+(3 rows)
+
+SELECT email_id, read, promo_count
+FROM test_fact.emails_fact
+ORDER BY email_id;
+ email_id | read | promo_count 
+----------+------+-------------
+        1 | t    |           1
+(1 row)
+
+SELECT order_id, customer_id, order_date, total, is_reorder, num_emails, num_read
+FROM test_fact.order_emails_fact
+ORDER BY order_id;
+ order_id | customer_id | order_date |  total  | is_reorder | num_emails | num_read 
+----------+-------------+------------+---------+------------+------------+----------
+        1 |           1 | 04-10-2018 |  100.00 | f          |          0 |         
+        3 |           5 | 04-12-2018 | 2000.00 | f          |          1 |        1
+        4 |           1 | 04-13-2018 |  100.00 | f          |          0 |         
+(3 rows)
+
+SELECT customer_id, as_of_date, total_orders, last_order_date
+FROM test_fact.customer_order_history_fact
+ORDER BY customer_id, as_of_date;
+ customer_id |       as_of_date        | total_orders | last_order_date 
+-------------+-------------------------+--------------+-----------------
+           1 | [04-10-2018,04-13-2018) |            1 | 04-10-2018
+           1 | [04-13-2018,infinity)   |            2 | 04-13-2018
+           5 | [04-12-2018,infinity)   |            1 | 04-12-2018
+(3 rows)
+
+SELECT customer_id, rows_in_customersorders_fact
+FROM test_fact.customersorders_summary_fact
+ORDER BY customer_id;
+ customer_id | rows_in_customersorders_fact 
+-------------+------------------------------
+           1 |                            2
+           5 |                            1
+(2 rows)
+

@@ -1,0 +1,5 @@
+pg-fact-loader (1.5.0-1) unstable; urgency=medium
+
+  * Initial public version of pg_fact_loader 
+
+ -- Jeremy Finzel <jfinzel@enova.com>  Fri, 09 Nov 2018 11:54:11 -0600 

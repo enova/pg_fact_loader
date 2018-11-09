@@ -1,0 +1,1 @@
+COMMENT ON VIEW fact_loader.queue_deps_all_with_retrieval IS 'The master view which builds on queue_deps_all to include key_retrieval_sequences.  This is the main view used by sql_builder(int) to gather all queued changes.';

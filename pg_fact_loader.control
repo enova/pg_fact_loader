@@ -1,0 +1,5 @@
+# pg_fact_loader extension
+comment = 'build fact tables with Postgres'
+module_pathname = '$libdir/pg_fact_loader'
+default_version = '1.5'
+schema = 'fact_loader'

@@ -1,0 +1,1 @@
+ALTER TABLE fact_loader.debug_process_queue DROP CONSTRAINT debug_process_queue_pkey;

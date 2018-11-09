@@ -1,0 +1,55 @@
+SET client_min_messages TO warning;
+--This is for testing functionality of timezone-specific timestamps
+SET TIMEZONE TO 'America/Chicago';
+--Make one change to guarantee we want to see a fact table change, ensure rep stream is up to date
+UPDATE test.customers SET phone = '0001234577' WHERE customer_id = 10;
+SELECT pglogical_ticker.tick();
+ tick 
+------
+ 
+(1 row)
+
+--Ensure this one table is prioritized
+UPDATE fact_loader.fact_tables SET force_worker_priority = TRUE WHERE fact_table_relid = 'test_fact.customers_fact'::REGCLASS;
+DROP TABLE IF EXISTS foo_worker;
+CREATE TEMP TABLE foo_worker AS
+SELECT fact_loader.launch_worker() AS pid;
+--This should be enough time for the worker to run once.
+SELECT pg_sleep(3);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+SELECT customer_id, phone, age, last_order_id, order_product_count, order_product_promo_ids
+FROM test_fact.customers_fact
+ORDER BY customer_id;
+ customer_id |   phone    | age | last_order_id | order_product_count | order_product_promo_ids 
+-------------+------------+-----+---------------+---------------------+-------------------------
+           1 | 0001234561 |  35 |             4 |                   3 | 
+           2 | 0001234562 |  42 |               |                   0 | 
+           3 | 0001234563 |  35 |             2 |                   2 | 
+           4 | 0001234564 |  35 |               |                   0 | 
+           5 | 0001234565 |  35 |             3 |                   1 | {1}
+           6 | 0001234566 |  35 |               |                   0 | 
+           7 | 0001234567 |  35 |               |                   0 | 
+           8 | 0001234568 |  35 |               |                   0 | 
+           9 | 0001234569 |  35 |               |                   0 | 
+          10 | 0001234577 |  35 |               |                   0 | 
+(10 rows)
+
+UPDATE fact_loader.fact_tables SET force_worker_priority = FALSE WHERE fact_table_relid = 'test_fact.customers_fact'::REGCLASS;
+--Terminate the worker
+SELECT pg_terminate_backend(pid) FROM foo_worker;
+ pg_terminate_backend 
+----------------------
+ t
+(1 row)
+
+--Let it shutdown
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
