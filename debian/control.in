@@ -9,6 +9,6 @@ Vcs-Git: https://github.com/enova/pg_fact_loader.git
 
 Package: postgresql-PGVERSION-pg-fact-loader
 Architecture: any
-Depends: postgresql-PGVERSION, postgresql-PGVERSION-pglogical, ${shlibs:Depends}, ${misc:Depends}
+Depends: postgresql-PGVERSION, ${shlibs:Depends}, ${misc:Depends}
 Description: Build fact tables asynchronously with Postgres
  Use queue tables to build fact tables asynchronously for PostgreSQL PGVERSION.
