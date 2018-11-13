@@ -1,3 +1,3 @@
-Depends: @, postgresql-server-dev-all
+Depends: @, postgresql-server-dev-all, postgresql-9.5-pglogical, postgresql-9.6-pglogical, postgresql-10-pglogical, postgresql-11-pglogical, postgresql-9.5-pglogical, postgresql-9.6-pglogical, postgresql-10-pglogical, postgresql-11-pglogical-ticker
 Tests: installcheck
 Restrictions: allow-stderr
