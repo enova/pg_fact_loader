@@ -207,7 +207,7 @@ pg_fact_loader_worker(PG_FUNCTION_ARGS)
 	sprintf(worker.bgw_function_name, "pg_fact_loader_main");
 	snprintf(worker.bgw_name, BGW_MAXLEN, "pg_fact_loader worker");
 #if PG_VERSION_NUM >= 110000 
-	snprintf(worker.bgw_type, BGW_MAXLEN, "pglogical_ticker");
+	snprintf(worker.bgw_type, BGW_MAXLEN, "pg_fact_loader");
 #endif
 	worker.bgw_main_arg = ObjectIdGetDatum(db_oid);
 	/* set bgw_notify_pid so that we can use WaitForBackgroundWorkerStartup */
