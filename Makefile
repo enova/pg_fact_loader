@@ -9,8 +9,7 @@ REGRESS := 01_create_ext 02_schema 03_audit \
         09_purge 10_delete 11_more_data \
         12_no_proid 13_cutoff_no_dep_on_filter \
         14_null_key 15_source_change_date \
-        16_1_2_features 17_1_3_features \
-        18_alter_update_features
+        16_1_2_features 17_1_3_features
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
