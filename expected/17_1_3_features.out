@@ -69,17 +69,11 @@ SELECT COUNT(1) FROM fact_loader.fact_table_refresh_logs;
 (1 row)
 
 ROLLBACK; 
---Test support for extension without deps
+--Test support for extension without deps (older tests for version 1.2 are removed as no longer relevant)
 BEGIN;
 DROP EXTENSION pg_fact_loader CASCADE;
 DROP EXTENSION pglogical_ticker CASCADE;
 DROP EXTENSION pglogical CASCADE;
 CREATE EXTENSION pg_fact_loader;
 DROP EXTENSION pg_fact_loader;
-CREATE EXTENSION pglogical;
-CREATE EXTENSION pglogical_ticker;
-CREATE EXTENSION pg_fact_loader VERSION '1.2';
-ALTER EXTENSION pg_fact_loader UPDATE;
-DROP EXTENSION pglogical_ticker;
-DROP EXTENSION pglogical CASCADE;
 ROLLBACK;
