@@ -43,5 +43,6 @@ create_update_file_with_header
 
 # Only copy diff and new files after last version, and add the update script
 touch $update_file
+add_file functions/sql_builder.sql $update_file
 cp $last_version_file $new_version_file
-#cat $update_file >> $new_version_file
+cat $update_file >> $new_version_file

@@ -144,6 +144,14 @@ pg_fact_loader_main(Datum main_arg)
 		}
 
 		/*
+		 * In case of a SIGTERM, exit immediately.
+		 */
+		if (got_sigterm)
+		{
+			break;
+		}
+
+		/*
 		 * Start a transaction on which we can run queries.  Note that each
 		 * StartTransactionCommand() call should be preceded by a
 		 * SetCurrentStatementStartTimestamp() call, which sets both the time
