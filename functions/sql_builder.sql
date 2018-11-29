@@ -402,12 +402,12 @@ example of this, see the test cases involving the test.order_product_promos tabl
         END)
            AS inner_global_where_sql,
     format($$
-        %s < %s %s
+        -- changed_at is guaranteed now to be in timestamptz - any time zone casting is only in subquery
+        changed_at < %s
         AND (min_missed_id IS NULL OR (fact_loader_batch_id < min_missed_id))
         $$,
-        quote_ident(c.queue_table_timestamp),
-        quote_literal(c.maximum_cutoff_time),
-        changed_at_tz_correction)
+        quote_literal(c.maximum_cutoff_time)
+        )
            AS outer_global_where_sql,
     format($$
       AND q.%s = 'I'
