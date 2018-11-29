@@ -1,6 +1,6 @@
 SET client_min_messages TO warning;
---This is for testing functionality of timezone-specific timestamps
-SET TIMEZONE TO 'America/Chicago';
+-- Client time zone should not change functionality of worker - use a different one here
+SET TIMEZONE TO 'UTC';
 --Enable all except dep tables for now
 UPDATE fact_loader.fact_tables ft SET enabled = TRUE
 WHERE NOT EXISTS (SELECT 1 FROM fact_loader.fact_table_deps d WHERE d.child_id = ft.fact_table_id);
@@ -117,6 +117,9 @@ ORDER BY customer_id, as_of_date;
            5 | [04-12-2018,infinity)   |            1 | 04-12-2018
 (4 rows)
 
+-- Set time zone back to America/Chicago because the audit data is being logged at that time zone
+-- (another great reason NEVER to use timestamp, but functionality we need at any rate)
+SET TIMEZONE TO 'America/Chicago';
 UPDATE test.customers SET age = 40 WHERE customer_id = 2;
 -- We need to make deletes handled with recursive joins as well first before testing this
 -- DELETE FROM test.customers WHERE customer_id = 3;
