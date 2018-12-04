@@ -76,7 +76,12 @@ how this configuration can be setup.
 ## <a name="installation"></a>Installation
 
 The functionality of this requires postgres version 9.5+ and a working install
-of pglogical and pglogical_ticker.  To build from source:
+of pglogical and pglogical_ticker (or it can be used locally only without pglogical).
+
+DEB available on official PGDG repository as postgresql-${PGSQL_VERSION}-pg-fact-loader see
+installation instruction on https://wiki.postgresql.org/wiki/Apt
+
+Or to build from source:
 ```
 make
 make install
