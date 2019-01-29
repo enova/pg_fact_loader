@@ -2,8 +2,8 @@
 
 set -eu
 
-last_version=1.4
-new_version=1.5
+last_version=1.5
+new_version=1.6
 last_version_file=pg_fact_loader--${last_version}.sql
 new_version_file=pg_fact_loader--${new_version}.sql
 update_file=pg_fact_loader--${last_version}--${new_version}.sql
@@ -35,14 +35,12 @@ d=$2
 
 create_update_file_with_header
 
-# Drop dependencies to be re-added with changed def
-
-# Now add new view and function defs
-
-# Add comment files back for dropped and recreated views
-
 # Only copy diff and new files after last version, and add the update script
-touch $update_file
-add_file functions/sql_builder.sql $update_file
+add_file schema/1.6.sql $update_file
+add_file views/prioritized_jobs.sql $update_file
+add_file views/queue_deps_all.sql $update_file
+add_file views/queue_deps_all_with_retrieval.sql $update_file
+
+# make new version file
 cp $last_version_file $new_version_file
 cat $update_file >> $new_version_file
