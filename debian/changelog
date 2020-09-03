@@ -1,3 +1,10 @@
+pg-fact-loader (1.6.0-1) unstable; urgency=medium
+
+  * Change regproc to text to allow pgupgrade 
+  * Ensure pg12 readiness
+
+ -- Jeremy Finzel <jfinzel@enova.com>  Mon, 31 Aug 2020 10:23:10 -0500
+
 pg-fact-loader (1.5.2-1) unstable; urgency=medium
 
   * Fix time zone bug and behavior of SIGTERM 
