@@ -30,4 +30,3 @@ Architecture: any
 Depends: postgresql-11, ${shlibs:Depends}, ${misc:Depends}
 Description: Build fact tables asynchronously with Postgres
  Use queue tables to build fact tables asynchronously for PostgreSQL 11.
-
