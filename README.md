@@ -203,6 +203,7 @@ There are a number of config tables that drive pg_fact_loader loads:
   - `depends_on_parent_daily_job_id`: For jobs that depend on other daily scheduled jobs only. Immediate parent which must complete before this job will run.
   - `daily_scheduled_deps`: OPTIONAL for daily scheduled jobs.  The only purpose of this column is to consider if we should wait to run a scheduled job because dependent tables are out of date.  This is a regclass array of tables that this scheduled job depends on, which will only be considered if they are either listed in fact_loader.queue_tables or fact_loader.fact_tables.  If the former, replication delay will be considered (if table is not local).  If the latter, last_refresh_source_cutoff will be considered.  Works in combination with daily_scheduled_dep_delay_tolerance which says how much time delay is tolerated.  Job will FAIL if the time delay constraint is not met for all tables - this is intended to be configured as a rare occurrence and thus we want to raise an alarm about it.
   - `daily_scheduled_dep_delay_tolerance`: OPTIONAL for daily scheduled jobs.  Amount of time interval allowed that dependent tables can be out of date before running this job.  For example, if 10 minutes, then if ANY of the dependent tables are more than 10 minutes out of date, this job will FAIL if the time delay constraint is not met for all tables - this is intended to be configured as a rare occurrence and thus we want to raise an alarm about it.
+  - `pre_execute_hook_sql`: OPTIONAL - custom sql to execute within the `load.sql` function, after the `process_queue` has been loaded, but prior to the actual load of the fact table using the `process_queue`.  This feature was originally written due to the need to index the process_queue in certain unique circumstances, prior to actual execution over the `process_queue`.
 
 `queue_tables`: Each queue table along with the base table to which it belongs.
   - `queue_table_id`: Unique identifier for queue tables.
@@ -544,6 +545,24 @@ again still in a transaction that you may roll back.
 Once you have fixed whatever issues a job may have, you will need to re-enable it to get it running again.
 
 # <a name="tech"></a>Technical Documentation
+
+## <a name="new_releases"></a>New Releases
+There are some helper scripts to assist in adding a new version of pg_fact_loader, mainly `pg_fact_loader-sql-maker.sh`.
+
+1. To add a new version, open this file, change the `last_version` and `new_version` to the correct new values.
+2. Remove everything after `create_update_file_with_header` in the script.  The next few lines are custom files that were
+changed with a particular release, which are added to the new version's SQL script.  Whatever functions or views you modify,
+or if you have a schema change in the `schema/` directory, you will want to add these files using the provided function,
+i.e. `add_file views/prioritized_jobs.sql $update_file` will add the SQL for views/prioritized_jobs.sql to the new extension
+script.  You only need to add files that you modify with a release.
+3. When all is prepared, run the script.  It should create new files for you for the new extension version, including an update
+script from the previous version to the new version.
+4. Update the Makefile to include these new SQL files.
+5. Update the first script in both `sql/` and `expected/` directories, which refer to the most recent version as a
+default.  Update it to the new version.
+6. Update the pg_fact_loader.control file with the latest version.
+
+To test your extension for all postgres versions, including testing extension upgrade paths, see and run the script `test_all_versions.sh`.
 
 ## <a name="workflow"></a>Workflow
 

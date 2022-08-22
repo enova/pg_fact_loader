@@ -64,12 +64,23 @@ SELECT customer_id, phone, age, last_order_id, order_product_count, order_produc
 FROM test_fact.customers_fact
 ORDER BY customer_id;
 
-UPDATE fact_loader.fact_tables SET force_worker_priority = TRUE WHERE fact_table_relid = 'test_fact.customers_fact'::REGCLASS;
+UPDATE fact_loader.fact_tables
+SET force_worker_priority = TRUE,
+-- Test 1.7 pre-hook feature
+pre_execute_hook_sql = 'CREATE TABLE cool_pre_execute_hook_sql (id int);'
+WHERE fact_table_relid = 'test_fact.customers_fact'::REGCLASS;
+
 SELECT pglogical_ticker.tick();
 SELECT fact_loader.worker();
 SELECT customer_id, phone, age, last_order_id, order_product_count, order_product_promo_ids
 FROM test_fact.customers_fact
 ORDER BY customer_id;
+
+SELECT * FROM cool_pre_execute_hook_sql;
+
+UPDATE fact_loader.fact_tables
+SET pre_execute_hook_sql = NULL 
+WHERE fact_table_relid = 'test_fact.customers_fact'::REGCLASS;
 
 --This would simulate an application's changes being out of order now
 UPDATE test.customers SET age = 41 WHERE customer_id = 2;

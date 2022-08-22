@@ -1,7 +1,8 @@
 EXTENSION = pg_fact_loader
 DATA =  pg_fact_loader--1.4.sql pg_fact_loader--1.4--1.5.sql \
         pg_fact_loader--1.5.sql pg_fact_loader--1.5--1.6.sql \
-        pg_fact_loader--1.6.sql
+        pg_fact_loader--1.6.sql pg_fact_loader--1.6--1.7.sql \
+        pg_fact_loader--1.7.sql
 MODULES = pg_fact_loader 
 
 REGRESS := 01_create_ext 02_schema 03_audit \
