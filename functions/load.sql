@@ -29,6 +29,13 @@ This just creates a temp table with all changes to be processed
 RAISE DEBUG 'Populating Queue for fact_table_id %: %', p_fact_table_id, v_process_queue_sql;
 EXECUTE COALESCE(v_process_queue_sql, $$SELECT 'No queue data' AS result$$);
 
+-- Numeric index for process_queue - for special use cases
+IF (SELECT COUNT(1) = SUM(case when key_value ~ '^[0-9\.]+$' then 1 else 0 end) FROM process_queue) THEN
+    RAISE LOG 'Indexing process_queue';
+    CREATE INDEX ON process_queue ((key_value::bigint));
+    ANALYZE process_queue;
+END IF;
+
 /****
 For DEBUG purposes only to view the actual process_queue.  Requires setting log_min_messages to DEBUG.
  */
