@@ -1,15 +1,23 @@
+pg-fact-loader (1.6.0-2) UNRELEASED; urgency=medium
+
+  * Trim trailing whitespace.
+  * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository,
+    Repository-Browse.
+
+ -- Debian Janitor <janitor@jelmer.uk>  Sat, 05 Feb 2022 09:00:36 -0000
+
 pg-fact-loader (1.6.0-1) unstable; urgency=medium
 
-  * Change regproc to text to allow pgupgrade 
+  * Change regproc to text to allow pgupgrade
   * Ensure pg12 readiness
 
  -- Jeremy Finzel <jfinzel@enova.com>  Mon, 31 Aug 2020 10:23:10 -0500
 
 pg-fact-loader (1.5.2-1) unstable; urgency=medium
 
-  * Fix time zone bug and behavior of SIGTERM 
+  * Fix time zone bug and behavior of SIGTERM
 
- -- Jeremy Finzel <jfinzel@enova.com>  Thu, 29 Nov 2018 10:36:36 -0600 
+ -- Jeremy Finzel <jfinzel@enova.com>  Thu, 29 Nov 2018 10:36:36 -0600
 
 pg-fact-loader (1.5.1-2) UNRELEASED; urgency=medium
 
@@ -19,12 +27,12 @@ pg-fact-loader (1.5.1-2) UNRELEASED; urgency=medium
 
 pg-fact-loader (1.5.1-1) unstable; urgency=medium
 
-  * Fixes for old version tests 
+  * Fixes for old version tests
 
- -- Jeremy Finzel <jfinzel@enova.com>  Tue, 27 Nov 2018 09:23:57 -0600 
- 
+ -- Jeremy Finzel <jfinzel@enova.com>  Tue, 27 Nov 2018 09:23:57 -0600
+
 pg-fact-loader (1.5.0-1) unstable; urgency=medium
 
-  * Initial public version of pg_fact_loader 
+  * Initial public version of pg_fact_loader
 
- -- Jeremy Finzel <jfinzel@enova.com>  Fri, 09 Nov 2018 11:54:11 -0600 
+ -- Jeremy Finzel <jfinzel@enova.com>  Fri, 09 Nov 2018 11:54:11 -0600
