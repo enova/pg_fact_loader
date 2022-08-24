@@ -7,6 +7,7 @@ DECLARE
     v_metadata_update_sql text;
     v_debug_rec record;
     v_debug_text text = '';
+    v_pre_execute_hook_sql text = '';
 BEGIN
 /***
 There are 3 basic steps to this load:
@@ -28,6 +29,15 @@ This just creates a temp table with all changes to be processed
  */
 RAISE DEBUG 'Populating Queue for fact_table_id %: %', p_fact_table_id, v_process_queue_sql;
 EXECUTE COALESCE(v_process_queue_sql, $$SELECT 'No queue data' AS result$$);
+
+/****
+ Pre-execute hook
+ */
+SELECT pre_execute_hook_sql INTO v_pre_execute_hook_sql
+FROM fact_loader.fact_tables
+WHERE fact_table_id = p_fact_table_id;
+
+EXECUTE COALESCE(v_pre_execute_hook_sql, $$SELECT 'No pre-execute hook.' AS result$$);
 
 /****
 For DEBUG purposes only to view the actual process_queue.  Requires setting log_min_messages to DEBUG.

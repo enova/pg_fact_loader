@@ -3,7 +3,7 @@
 set -eu
 
 orig_path=$PATH
-newest_version=1.6
+newest_version=1.7
 
 unset PGSERVICE
 
@@ -39,12 +39,13 @@ cat << EOM
 *******************FROM VERSION $from_version******************
 
 EOM
-make_and_test "9.6"
 make_and_test "10"
 make_and_test "11"
 make_and_test "12"
+make_and_test "13"
+make_and_test "14"
 }
 
+test_all_versions "1.7"
 test_all_versions "1.6"
 test_all_versions "1.5"
-test_all_versions "1.4"
