@@ -13,7 +13,7 @@ DROP TABLE IF EXISTS foo_worker;
 CREATE TEMP TABLE foo_worker AS
 SELECT fact_loader.launch_worker() AS pid;
 --This should be enough time for the worker to run once.
-SELECT pg_sleep(3);
+SELECT pg_sleep(7);
 
 SELECT customer_id, phone, age, last_order_id, order_product_count, order_product_promo_ids
 FROM test_fact.customers_fact

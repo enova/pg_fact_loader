@@ -1,3 +1,9 @@
+pg-fact-loader (1.7.1-1) unstable; urgency=medium
+
+  * Test change to avoid race condition on some platforms 
+
+ -- Jeremy Finzel <jfinzel@enova.com>  Wed, 07 Sep 2022 09:13:33 -0500
+
 pg-fact-loader (1.7.0-1) unstable; urgency=medium
 
   * Add pre-execute hook
