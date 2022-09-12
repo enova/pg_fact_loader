@@ -19,7 +19,7 @@ FROM fact_loader.safely_terminate_workers();
 (1 row)
 
 --Should work because the processes should have been idle now for at least 5 seconds
-SELECT pg_sleep(6);
+SELECT pg_sleep(10);
  pg_sleep 
 ----------
  

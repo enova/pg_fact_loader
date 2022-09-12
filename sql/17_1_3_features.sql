@@ -12,7 +12,7 @@ SELECT number_terminated,
 FROM fact_loader.safely_terminate_workers();
 
 --Should work because the processes should have been idle now for at least 5 seconds
-SELECT pg_sleep(6);
+SELECT pg_sleep(10);
 SELECT number_terminated,
   number_still_live,
   array_length(pids_still_live, 1) AS pids_still_live_ct

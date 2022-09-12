@@ -224,7 +224,7 @@ ORDER BY order_id;
 (1 row)
 
 --This is NOT a new feature but a new test coverage - testing concurrency.
-\! psql contrib_regression -c 'BEGIN; SELECT fact_loader.worker() INTO try1; SELECT pg_sleep(2); COMMIT;' &
+\! psql -X contrib_regression -c 'BEGIN; SELECT fact_loader.worker() INTO try1; SELECT pg_sleep(2); COMMIT;' &
 SELECT pg_sleep(1);
 NOTICE:  table "process_queue" does not exist, skipping
  pg_sleep 
@@ -232,7 +232,7 @@ NOTICE:  table "process_queue" does not exist, skipping
  
 (1 row)
 
-\! psql contrib_regression -c ' SELECT fact_loader.worker() INTO try2;'
+\! psql -X contrib_regression -c ' SELECT fact_loader.worker() INTO try2;'
 SELECT 1
 SELECT pg_sleep(2);
 COMMIT
