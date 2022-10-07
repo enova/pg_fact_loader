@@ -1,2 +1,2 @@
 version=4
-https://github.com/enova/pg_fact_loader/releases .*/v(.*).tar.gz
+https://github.com/enova/pg_fact_loader/tags .*/v(.*).tar.gz
