@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Jeremy Finzel <jfinzel@enova.com>
 Build-Depends: debhelper-compat (= 13), libpq-dev, postgresql-common, postgresql-server-dev-all
 Standards-Version: 4.6.1
+Rules-Requires-Root: no
 Homepage: https://github.com/enova/pg_fact_loader
 Vcs-Git: https://github.com/enova/pg_fact_loader.git
 
