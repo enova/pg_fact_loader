@@ -1,0 +1,16 @@
+--- a/expected/16_1_2_features.out
++++ b/expected/16_1_2_features.out
+@@ -235,6 +235,13 @@ NOTICE:  table "process_queue" does not
+ \! psql contrib_regression -c ' SELECT fact_loader.worker() INTO try2;'
+ SELECT 1
+ SELECT pg_sleep(2);
++BEGIN
++SELECT 1
++ pg_sleep 
++----------
++ 
++(1 row)
++
+ COMMIT
+  pg_sleep 
+ ----------
