@@ -2,11 +2,41 @@ Source: pg-fact-loader
 Section: database
 Priority: optional
 Maintainer: Jeremy Finzel <jfinzel@enova.com>
-Build-Depends: debhelper-compat (= 13), libpq-dev, postgresql-common, postgresql-server-dev-all
+Build-Depends: debhelper-compat (= 12), libpq-dev, postgresql-common, postgresql-server-dev-all
 Standards-Version: 4.6.1
 Rules-Requires-Root: no
 Homepage: https://github.com/enova/pg_fact_loader
 Vcs-Git: https://github.com/enova/pg_fact_loader.git
+
+Package: postgresql-10-pg-fact-loader
+Architecture: any
+Depends: postgresql-10, ${shlibs:Depends}, ${misc:Depends}
+Description: Build fact tables asynchronously with Postgres
+ Use queue tables to build fact tables asynchronously for PostgreSQL 10.
+
+Package: postgresql-11-pg-fact-loader
+Architecture: any
+Depends: postgresql-11, ${shlibs:Depends}, ${misc:Depends}
+Description: Build fact tables asynchronously with Postgres
+ Use queue tables to build fact tables asynchronously for PostgreSQL 11.
+
+Package: postgresql-12-pg-fact-loader
+Architecture: any
+Depends: postgresql-12, ${shlibs:Depends}, ${misc:Depends}
+Description: Build fact tables asynchronously with Postgres
+ Use queue tables to build fact tables asynchronously for PostgreSQL 12.
+
+Package: postgresql-13-pg-fact-loader
+Architecture: any
+Depends: postgresql-13, ${shlibs:Depends}, ${misc:Depends}
+Description: Build fact tables asynchronously with Postgres
+ Use queue tables to build fact tables asynchronously for PostgreSQL 13.
+
+Package: postgresql-14-pg-fact-loader
+Architecture: any
+Depends: postgresql-14, ${shlibs:Depends}, ${misc:Depends}
+Description: Build fact tables asynchronously with Postgres
+ Use queue tables to build fact tables asynchronously for PostgreSQL 14.
 
 Package: postgresql-15-pg-fact-loader
 Architecture: any

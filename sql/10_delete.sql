@@ -4,7 +4,7 @@ SET TIMEZONE TO 'America/Chicago';
 
 DELETE FROM test.customers WHERE customer_id = 3;
 SELECT pg_sleep(1);
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 
 SELECT fact_loader.worker();
 SELECT fact_loader.worker();
@@ -52,7 +52,7 @@ SELECT COUNT(1) FROM test_audit_raw.customers_audit;
 
 DELETE FROM test.reorders;
 SELECT pg_sleep(1);
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 
 SELECT fact_loader.worker();
 SELECT fact_loader.worker();

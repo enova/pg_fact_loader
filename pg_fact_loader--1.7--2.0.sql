@@ -1,3 +1,164 @@
+/* pg_fact_loader--1.7--2.0.sql */
+
+-- complain if script is sourced in psql, rather than via CREATE EXTENSION
+\echo Use "CREATE EXTENSION pg_fact_loader" to load this file. \quit
+
+DROP VIEW fact_loader.queue_deps_all_with_retrieval;
+DROP VIEW fact_loader.queue_deps_all;
+DROP FUNCTION fact_loader.safely_terminate_workers(); 
+DROP FUNCTION fact_loader.launch_workers(int);
+DROP FUNCTION fact_loader.launch_worker();
+DROP FUNCTION fact_loader._launch_worker(oid);
+DROP FUNCTION fact_loader.queue_table_delay_info();
+DROP FUNCTION fact_loader.logical_subscription();
+CREATE TYPE fact_loader.driver AS ENUM ('pglogical', 'native');
+
+
+/***
+This function exists mostly to easily mock out for testing purposes.
+ */
+CREATE FUNCTION fact_loader.subscription()
+RETURNS TABLE (oid OID, subpublications text[], subconninfo text)
+AS $BODY$
+BEGIN
+
+RETURN QUERY
+SELECT s.oid, s.subpublications, s.subconninfo FROM pg_subscription s;
+
+END;
+$BODY$
+LANGUAGE plpgsql;
+
+
+/***
+This function exists mostly to easily mock out for testing purposes.
+ */
+CREATE FUNCTION fact_loader.subscription_rel()
+RETURNS TABLE (srsubid OID, srrelid OID) 
+AS $BODY$
+BEGIN
+
+RETURN QUERY
+SELECT sr.srsubid, sr.srrelid FROM pg_subscription_rel sr;
+
+END;
+$BODY$
+LANGUAGE plpgsql;
+
+
+/***
+This function exists mostly to easily mock out for testing purposes.
+ */
+CREATE FUNCTION fact_loader.logical_subscription()
+RETURNS TABLE (subid OID, subpublications text[], subconninfo text, dbname text, driver fact_loader.driver)
+AS $BODY$
+BEGIN
+
+IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pglogical') THEN
+
+  RETURN QUERY EXECUTE $$
+  SELECT sub_origin_if AS subid, sub_replication_sets AS subpublications, null::text AS subconninfo, null::text AS dbname, 'pglogical'::fact_loader.driver AS driver
+  FROM pglogical.subscription
+  UNION ALL
+  SELECT oid, subpublications, subconninfo, (regexp_matches(subconninfo, 'dbname=(.*?)(?=\s|$)'))[1] AS dbname, 'native'::fact_loader.driver AS driver
+  FROM fact_loader.subscription();
+  $$;
+ELSE
+  RETURN QUERY
+  SELECT oid, subpublications, subconninfo, (regexp_matches(subconninfo, 'dbname=(.*?)(?=\s|$)'))[1] AS dbname, 'native'::fact_loader.driver AS driver
+  FROM fact_loader.subscription();
+
+END IF;
+
+END;
+$BODY$
+LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION fact_loader.queue_table_delay_info()
+RETURNS TABLE("publication_name" text,
+           "queue_of_base_table_relid" regclass,
+           "publisher" name,
+           "source_time" timestamp with time zone)
+AS
+$BODY$
+/***
+This function exists to allow no necessary dependency
+to exist on pglogical_ticker.  If the extension is used,
+it will return data from its native functions, if not,
+it will return a null data set matching the structure
+***/
+BEGIN
+
+IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pglogical_ticker') THEN
+    RETURN QUERY EXECUTE $$
+    -- pglogical
+    SELECT
+        unnest(coalesce(subpublications,'{NULL}')) AS publication_name
+      , qt.queue_of_base_table_relid
+      , n.if_name AS publisher
+      , t.source_time
+    FROM fact_loader.queue_tables qt
+      JOIN fact_loader.logical_subscription() s ON qt.pglogical_node_if_id = s.subid AND s.driver = 'pglogical'
+      JOIN pglogical.node_interface n ON n.if_id = qt.pglogical_node_if_id
+      JOIN pglogical_ticker.all_subscription_tickers() t ON t.provider_name = n.if_name
+    UNION ALL
+    -- native logical
+    SELECT
+        unnest(coalesce(subpublications,'{NULL}')) AS publication_name
+      , qt.queue_of_base_table_relid
+      , t.db AS publisher
+      , t.tick_time AS source_time
+    FROM fact_loader.queue_tables qt
+      JOIN fact_loader.subscription_rel() psr ON psr.srrelid = qt.queue_table_relid
+      JOIN fact_loader.logical_subscription() s ON psr.srsubid = s.subid
+      JOIN logical_ticker.tick t ON t.db = s.dbname
+    UNION ALL
+    -- local
+    SELECT
+        NULL::text AS publication_name
+      , qt.queue_of_base_table_relid
+      , NULL::name AS publisher
+      , now() AS source_time
+    FROM fact_loader.queue_tables qt
+    WHERE qt.pglogical_node_if_id IS NULL
+        AND NOT EXISTS (
+        SELECT 1
+        FROM fact_loader.subscription_rel() psr WHERE psr.srrelid = qt.queue_table_relid
+    );$$;
+ELSE
+    RETURN QUERY
+    -- local
+    SELECT
+        NULL::TEXT AS publication_name
+      , qt.queue_of_base_table_relid
+      , NULL::NAME AS publisher
+      --source_time is now() if queue tables are not pglogical-replicated, which is assumed if no ticker
+      , now() AS source_time
+    FROM fact_loader.queue_tables qt
+    WHERE NOT EXISTS (SELECT 1 FROM fact_loader.subscription_rel() psr WHERE psr.srrelid = qt.queue_table_relid)
+    UNION ALL
+    -- native logical
+    (WITH logical_subscription_with_db AS (
+    SELECT *, (regexp_matches(subconninfo, 'dbname=(.*?)(?=\s|$)'))[1] AS db
+    FROM fact_loader.logical_subscription()
+    )
+    SELECT
+        unnest(coalesce(subpublications,'{NULL}')) AS publication_name
+      , qt.queue_of_base_table_relid
+      , t.db AS publisher
+      , t.tick_time AS source_time
+    FROM fact_loader.queue_tables qt
+      JOIN fact_loader.subscription_rel() psr ON psr.srrelid = qt.queue_table_relid
+      JOIN logical_subscription_with_db s ON psr.srsubid = s.subid
+      JOIN logical_ticker.tick t ON t.db = s.db);
+END IF;
+
+END;
+$BODY$
+LANGUAGE plpgsql;
+
+
 CREATE OR REPLACE VIEW fact_loader.queue_deps_all AS
 WITH RECURSIVE fact_table_dep_cutoffs AS
 (SELECT
@@ -188,3 +349,53 @@ INNER JOIN LATERAL
   INNER JOIN pg_attribute a
     ON a.attrelid = pk.indrelid AND a.attnum = pk.ik) aqt ON TRUE
 ORDER BY ft.fact_table_relid;
+
+
+CREATE OR REPLACE VIEW fact_loader.queue_deps_all_with_retrieval AS
+SELECT
+  qtd.*,
+  krs.filter_scope,
+  krs.level,
+  krs.return_columns, --we need not get the type separately.  It must match queue_of_base_table_key_type
+  krs.is_fact_key,
+  krs.join_to_relation,
+  qtk.queue_table_relid AS join_to_relation_queue,
+  krs.join_to_column,
+  ctypes.join_column_type,
+  krs.return_columns_from_join,
+  ctypes.return_columns_from_join_type,
+  krs.join_return_is_fact_key,
+  /***
+  We include this in this view def to be easily shared by all events (I, U, D) in sql_builder,
+  as those may be different in terms of passing source_change_date.
+   */
+  format(', %s::DATE AS source_change_date',
+    CASE
+      WHEN krs.pass_queue_table_change_date_at_tz IS NOT NULL
+        /***
+        For casting queue_table_timestamp to a date, we first ensure we have it as timestamptz (objective UTC time).
+        Then, we cast it to the timezone of interest on which the date should be based.
+        For example, 02:00:00 UTC time on 2018-05-02 is actually 2018-05-01 in America/Chicago time.
+        Thus, any date-based fact table must decide in what time zone to consider the date.
+         */
+        THEN format('(%s %s AT TIME ZONE %s)',
+                    'q.'||quote_ident(qtd.queue_table_timestamp),
+                    CASE WHEN qtd.queue_table_tz IS NULL THEN '' ELSE 'AT TIME ZONE '||quote_literal(qtd.queue_table_tz) END,
+                    quote_literal(krs.pass_queue_table_change_date_at_tz))
+        ELSE 'NULL'
+      END) AS source_change_date_select
+FROM fact_loader.queue_deps_all qtd
+INNER JOIN fact_loader.key_retrieval_sequences krs ON qtd.queue_table_dep_id = krs.queue_table_dep_id
+LEFT JOIN fact_loader.queue_tables qtk ON qtk.queue_of_base_table_relid = krs.join_to_relation
+LEFT JOIN LATERAL
+  (SELECT MAX(CASE WHEN attname = krs.join_to_column THEN format_type(atttypid, atttypmod) ELSE NULL END) AS join_column_type,
+    MAX(CASE WHEN attname = krs.return_columns_from_join[1] THEN format_type(atttypid, atttypmod) ELSE NULL END) AS return_columns_from_join_type
+  FROM pg_attribute a
+  WHERE a.attrelid IN(krs.join_to_relation)
+    /****
+    We stubbornly assume that if there are multiple columns in return_columns_from_join, they all have the same type.
+    Undue complexity would ensue if we did away with that rule.
+     */
+    AND a.attname IN(krs.join_to_column,krs.return_columns_from_join[1])) ctypes ON TRUE;
+
+

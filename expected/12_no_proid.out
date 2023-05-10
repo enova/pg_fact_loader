@@ -24,7 +24,7 @@ UPDATE test.emails SET read = FALSE WHERE email_id = 1;
 INSERT INTO test.emails (email_id, customer_id, read)
 VALUES (4, 8, true),
   (5, 9, false);
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
  tick 
 ------
  
@@ -49,7 +49,7 @@ ORDER BY email_id;
         1 | f    |           1
 (1 row)
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
  tick 
 ------
  

@@ -1,5 +1,5 @@
 # pg_fact_loader
-Build fact tables with Postgres using a queue and background workers
+Build fact tables with Postgres using replicated tables and a queue
 
 [Overview](#overview)
 - [High Level Description](#high_level)
@@ -14,7 +14,6 @@ Build fact tables with Postgres using a queue and background workers
 - [Backfills](#backfills)
 
 [Administration](#admin)
-- [Checking, Stopping, and Starting Workers](#workers)
 - [Manually Executing Jobs](#manual)
 - [Troubleshooting Errors and Issues](#troubleshoot)
 
@@ -24,15 +23,12 @@ Build fact tables with Postgres using a queue and background workers
 # <a name="overview"></a>Overview
 
 ## <a name="high_level"></a>High Level Description
-This extension is for building fact tables asynchronously using queues that contain all
+This extension is for building fact tables using queues that contain all
 write events (inserts, updates, and deletes) as the driver.
 
-By default, we assume that fact tables are built in a pglogical replica, not an OLTP master,
+By default, we assume that fact tables are built in a logical replica, not an OLTP master,
 which is why we have logic within the codebase that checks for replication stream delay (but it is
-possible to run this whole system locally without any deps on pglogical).
-
-This could be modified in the future to support the new built-in Postgres logical replication
-starting in version 10, perhaps in a later version once it has more features.
+possible to run this whole system locally without any deps on logical replication).
 
 There are several essential steps to having a working setup where fact tables will be automatically
 built for you as new data comes in that is queued for processing:
@@ -56,7 +52,7 @@ built for you as new data comes in that is queued for processing:
   populate fact table data for every customer: `SELECT customers_fact_merge(customer_id) FROM customers;`.
 
 10. Enable the configuration for your fact table.
-11. Launch the worker to start continuously processing changes
+11. Schedule the fact_loader.worker() function to run to start continuously processing changes
 
 
 ## <a name="full_example"></a>A Full Example
@@ -447,7 +443,7 @@ Here is the typical process then to enable a job, once your configuration is in 
 3. Backfill in batches by running your configured `merge` function over the entire set of data. For example:
   `SELECT customers_fact_merge(customer_id) FROM customers;`
 4. Enable the fact_loader job.
-5. ONLY IF there are not already workers running, launch a worker.
+5. Run worker function in whatever scheduled way desired (i.e. crontab).
 
 If you need to at any point in the future do another backfill on the table, this is the same set of step
 to follow.  **However**, it will be better in production to not `TRUNCATE` the fact table, but rather to use
@@ -455,55 +451,17 @@ small batches to refresh the whole table while still allowing concurrent access.
 any replication stream going out of your system. 
 
 To **enable** a fact_table in the `fact_tables` for it to be considered by the worker for refresh,
-simply runn an update, i.e.
+simply run an update, i.e.
 ```sql
 UPDATE fact_loader.fact_tables SET enabled = TRUE WHERE fact_table_relid = 'test_fact.customers_fact';
 ```
 
-To **deploy** the background worker which will run every minute, run:
-```sql
-SELECT fact_loader.launch_worker();
-```
-
-It is supported to run as many workers as you want up to `max_worker_processes` of course.
-
-All workers nap for 1 minute.  Concurrency is handled by locking fact_tables rows for update, which can be
+Concurrency is handled by locking fact_tables rows for update, which can be
 seen in the wrapping `worker()` function.  Adding more workers means you will have smaller deltas, and
-more up to date fact tables.
+more up to date fact tables.  For example you can schedule 5 calls to `worker()` to kick off from cron every minute.
 
 
 # <a name="admin"></a>Administration
-
-## <a name="workers"></a>Checking, Stopping, and Starting Workers
-To check on a worker:
-```sql
-SELECT *
-FROM pg_stat_activity
---backend_type column supported after pg 10
-WHERE backend_type = 'background worker'
-  AND query = 'SELECT fact_loader.worker();'
-```
-
-To terminate a worker, bear in mind it is not a problem to terminate active workers.
-Because workers are transactional, you can simply terminate them and no data loss will
-result in pg_fact_loader.  Likewise, a hard crash of any system using pg_fact_loader
-will recover just fine upon re-launching workers.
-
-Still, it is ideal to avoid bloat to cleanly terminate workers and restart them using
-this function to kill them, and `launch_workers(int)` to re-launch them:
-```sql
-SELECT fact_loader.safely_terminate_workers();
-```
-
-To start a new worker:
-```sql
-SELECT fact_loader.launch_worker();
-```
-
-To launch a specified number of workers:
-```sql
-SELECT fact_loader.launch_workers(5);
-```
 
 ## <a name="manual"></a>Manually Executing Jobs
 If for some reason you need to manually execute a job in a concurrency-safe way that is integrated

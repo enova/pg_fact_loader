@@ -159,7 +159,7 @@ UPDATE test_audit_raw.customers_audit SET changed_at = '2018-04-27'::DATE WHERE 
 --Ensure this one table is prioritized
 UPDATE fact_loader.fact_tables SET force_worker_priority = TRUE, enabled = TRUE WHERE fact_table_relid = 'test_fact.customers_history_uktime_fact'::REGCLASS;
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 
 DO $$
 BEGIN

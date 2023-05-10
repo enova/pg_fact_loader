@@ -16,7 +16,7 @@ errors on other tables.  We just want to verify that this actually runs without 
  */
 UPDATE fact_loader.fact_tables SET force_worker_priority = TRUE WHERE fact_table_relid = 'test_fact.orders_fact'::REGCLASS;
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker() FROM generate_series(1,6);
 
 SELECT order_id, customer_id, order_date, total, is_reorder

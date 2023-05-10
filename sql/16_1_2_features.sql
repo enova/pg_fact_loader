@@ -142,7 +142,7 @@ WITH queue_tables_with_proids AS (
 --Force orders_fact update
 UPDATE test.orders SET total = 2010.00 WHERE order_id = 3;
 UPDATE fact_loader.fact_tables SET enabled = (fact_table_relid = 'test_fact.orders_fact'::REGCLASS);
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker();
 SELECT order_id, customer_id, order_date, total, is_reorder
 FROM test_fact.orders_fact

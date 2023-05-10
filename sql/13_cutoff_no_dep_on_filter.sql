@@ -10,13 +10,13 @@ UPDATE test.customers SET customer_number = customer_number||'1';
 
 SELECT COUNT(1) FROM test_audit_raw.customers_audit;
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker() FROM generate_series(1,6);
 
 --Should now handle dep fact tables
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker() FROM generate_series(1,6);
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker() FROM generate_series(1,6);
 
 SELECT fact_loader.purge_queues('0 seconds'::INTERVAL);

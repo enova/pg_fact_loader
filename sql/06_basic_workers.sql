@@ -8,7 +8,7 @@ UPDATE fact_loader.fact_tables ft SET enabled = TRUE
 WHERE NOT EXISTS (SELECT 1 FROM fact_loader.fact_table_deps d WHERE d.child_id = ft.fact_table_id);
 
 --Move the mock replication stream forward to now
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 
 SELECT fact_loader.worker();
 SELECT customer_id, phone, age, last_order_id, order_product_count, order_product_promo_ids
@@ -70,7 +70,7 @@ SET force_worker_priority = TRUE,
 pre_execute_hook_sql = 'CREATE TABLE cool_pre_execute_hook_sql (id int);'
 WHERE fact_table_relid = 'test_fact.customers_fact'::REGCLASS;
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker();
 SELECT customer_id, phone, age, last_order_id, order_product_count, order_product_promo_ids
 FROM test_fact.customers_fact
@@ -84,7 +84,7 @@ WHERE fact_table_relid = 'test_fact.customers_fact'::REGCLASS;
 
 --This would simulate an application's changes being out of order now
 UPDATE test.customers SET age = 41 WHERE customer_id = 2;
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker();
 
 --Pretend the transaction for this began before the update above - by lowering the actual audit_id and tx time
@@ -97,7 +97,7 @@ WHERE customers_audit_id = (SELECT MAX(customers_audit_id) FROM test_audit_raw.c
 --predicatable order with pglogical or a local queue table fed by pg_fact_loader 
 
 --This will be missed by version 1.2, but not 1.3
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker();
 
 SELECT (age = 42) AS age_is_updated

@@ -2,8 +2,8 @@
 
 set -eu
 
-last_version=1.6
-new_version=1.7
+last_version=1.7
+new_version=2.0
 last_version_file=pg_fact_loader--${last_version}.sql
 new_version_file=pg_fact_loader--${new_version}.sql
 update_file=pg_fact_loader--${last_version}--${new_version}.sql
@@ -36,9 +36,11 @@ d=$2
 create_update_file_with_header
 
 # Only copy diff and new files after last version, and add the update script
-add_file schema/1.7.sql $update_file
-add_file functions/load.sql $update_file
-add_file views/prioritized_jobs.sql $update_file
+add_file schema/2.0.sql $update_file
+add_file functions/subscription.sql $update_file
+add_file functions/subscription_rel.sql $update_file
+add_file functions/logical_subscription.sql $update_file
+add_file functions/queue_table_delay_info.sql $update_file
 add_file views/queue_deps_all.sql $update_file
 add_file views/queue_deps_all_with_retrieval.sql $update_file
 

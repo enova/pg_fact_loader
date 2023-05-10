@@ -15,7 +15,7 @@ INSERT INTO test.orders (order_id, customer_id, order_date, total)
 VALUES (3, 5, '2018-04-12', 2000.00);
 
 --Move the mock replication stream forward to now
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 
 SELECT fact_loader.worker();
 SELECT fact_loader.worker();
