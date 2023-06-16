@@ -1,3 +1,3 @@
-Depends: @, postgresql-server-dev-all, postgresql-contrib-9.5, postgresql-contrib-9.6, postgresql-contrib-10, postgresql-contrib-11, postgresql-9.5-pglogical, postgresql-9.6-pglogical, postgresql-10-pglogical, postgresql-11-pglogical, postgresql-9.5-pglogical-ticker, postgresql-9.6-pglogical-ticker, postgresql-10-pglogical-ticker, postgresql-11-pglogical-ticker
+Depends: @, make, postgresql-contrib-15, postgresql-15-pglogical, postgresql-15-pglogical-ticker
 Tests: installcheck
 Restrictions: allow-stderr

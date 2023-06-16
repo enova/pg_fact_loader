@@ -1,3 +1,18 @@
+pg-fact-loader (1.7.0-3) unstable; urgency=medium
+
+  * Disable unstable parts of test 17. (Closes: #1023226)
+
+ -- Christoph Berg <myon@debian.org>  Tue, 01 Nov 2022 11:01:38 +0100
+
+pg-fact-loader (1.7.0-2) unstable; urgency=medium
+
+  * Upload for PostgreSQL 15.
+  * Convert to dh --with pgxs.
+  * R³: no.
+  * debian/tests: Use 'make' instead of postgresql-server-dev-all.
+
+ -- Christoph Berg <myon@debian.org>  Mon, 24 Oct 2022 20:30:11 +0200
+
 pg-fact-loader (1.7.0-1) unstable; urgency=medium
 
   * Add pre-execute hook
