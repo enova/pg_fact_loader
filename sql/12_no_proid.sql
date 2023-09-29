@@ -30,14 +30,14 @@ INSERT INTO test.emails (email_id, customer_id, read)
 VALUES (4, 8, true),
   (5, 9, false);
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker() FROM generate_series(1,6);
 
 SELECT email_id, read, promo_count
 FROM test_fact.emails_fact
 ORDER BY email_id;
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 SELECT fact_loader.worker() FROM generate_series(1,6);
 
 SELECT fact_loader.purge_queues('0 seconds'::INTERVAL);

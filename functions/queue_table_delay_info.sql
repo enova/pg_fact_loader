@@ -1,8 +1,7 @@
 CREATE OR REPLACE FUNCTION fact_loader.queue_table_delay_info()
-RETURNS TABLE("replication_set_name" text,
+RETURNS TABLE("publication_name" text,
            "queue_of_base_table_relid" regclass,
-           "if_id" oid,
-           "if_name" name,
+           "publisher" name,
            "source_time" timestamp with time zone)
 AS
 $BODY$
@@ -16,31 +15,66 @@ BEGIN
 
 IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pglogical_ticker') THEN
     RETURN QUERY EXECUTE $$
+    -- pglogical
     SELECT
-        unnest(coalesce(sub_replication_sets,'{NULL}')) AS replication_set_name
+        unnest(coalesce(subpublications,'{NULL}')) AS publication_name
       , qt.queue_of_base_table_relid
-      , n.if_id
-      , n.if_name
-      --source_time is now() for local tables (pglogical_node_if_id is null), and based on pglogical_ticker time otherwise
-      , CASE
-        WHEN qt.pglogical_node_if_id IS NULL
-          THEN now()
-        ELSE t.source_time
-        END                          AS source_time
+      , n.if_name AS publisher
+      , t.source_time
     FROM fact_loader.queue_tables qt
-      LEFT JOIN fact_loader.logical_subscription() s ON qt.pglogical_node_if_id = s.sub_origin_if
-      LEFT JOIN pglogical.node_interface n ON n.if_id = qt.pglogical_node_if_id
-      LEFT JOIN pglogical_ticker.all_subscription_tickers() t ON t.provider_name = n.if_name;$$;
+      JOIN fact_loader.logical_subscription() s ON qt.pglogical_node_if_id = s.subid AND s.driver = 'pglogical'
+      JOIN pglogical.node_interface n ON n.if_id = qt.pglogical_node_if_id
+      JOIN pglogical_ticker.all_subscription_tickers() t ON t.provider_name = n.if_name
+    UNION ALL
+    -- native logical
+    SELECT
+        unnest(coalesce(subpublications,'{NULL}')) AS publication_name
+      , qt.queue_of_base_table_relid
+      , t.db AS publisher
+      , t.tick_time AS source_time
+    FROM fact_loader.queue_tables qt
+      JOIN fact_loader.subscription_rel() psr ON psr.srrelid = qt.queue_table_relid
+      JOIN fact_loader.logical_subscription() s ON psr.srsubid = s.subid
+      JOIN logical_ticker.tick t ON t.db = s.dbname
+    UNION ALL
+    -- local
+    SELECT
+        NULL::text AS publication_name
+      , qt.queue_of_base_table_relid
+      , NULL::name AS publisher
+      , now() AS source_time
+    FROM fact_loader.queue_tables qt
+    WHERE qt.pglogical_node_if_id IS NULL
+        AND NOT EXISTS (
+        SELECT 1
+        FROM fact_loader.subscription_rel() psr WHERE psr.srrelid = qt.queue_table_relid
+    );$$;
 ELSE
     RETURN QUERY
+    -- local
     SELECT
-        NULL::TEXT AS replication_set_name
+        NULL::TEXT AS publication_name
       , qt.queue_of_base_table_relid
-      , NULL::OID AS if_id
-      , NULL::NAME AS if_name
+      , NULL::NAME AS publisher
       --source_time is now() if queue tables are not pglogical-replicated, which is assumed if no ticker
       , now() AS source_time
-    FROM fact_loader.queue_tables qt;
+    FROM fact_loader.queue_tables qt
+    WHERE NOT EXISTS (SELECT 1 FROM fact_loader.subscription_rel() psr WHERE psr.srrelid = qt.queue_table_relid)
+    UNION ALL
+    -- native logical
+    (WITH logical_subscription_with_db AS (
+    SELECT *, (regexp_matches(subconninfo, 'dbname=(.*?)(?=\s|$)'))[1] AS db
+    FROM fact_loader.logical_subscription()
+    )
+    SELECT
+        unnest(coalesce(subpublications,'{NULL}')) AS publication_name
+      , qt.queue_of_base_table_relid
+      , t.db AS publisher
+      , t.tick_time AS source_time
+    FROM fact_loader.queue_tables qt
+      JOIN fact_loader.subscription_rel() psr ON psr.srrelid = qt.queue_table_relid
+      JOIN logical_subscription_with_db s ON psr.srsubid = s.subid
+      JOIN logical_ticker.tick t ON t.db = s.db);
 END IF;
 
 END;

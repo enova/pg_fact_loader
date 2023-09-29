@@ -8,7 +8,7 @@ SELECT pg_sleep(1);
  
 (1 row)
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
  tick 
 ------
  
@@ -156,7 +156,7 @@ SELECT pg_sleep(1);
  
 (1 row)
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
  tick 
 ------
  

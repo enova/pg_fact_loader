@@ -1,3 +1,5 @@
+\set d `echo ${TESTDRIVER:-pglogical}`
+\set x `echo ${TESTDROPEXT:-false}`
 SET client_min_messages TO warning;
 --This is for testing functionality of timezone-specific timestamps
 SET TIMEZONE TO 'America/Chicago';
@@ -25,16 +27,112 @@ WHERE set_name = s.set_name);
 
 DROP TABLE repsets;
 
+-- native equivalent
+CREATE PUBLICATION test1 WITH (publish = 'insert,update,delete');
+
 SELECT pglogical_ticker.deploy_ticker_tables();
+
+-- native equivalent
+CREATE SCHEMA IF NOT EXISTS logical_ticker;
+CREATE TABLE IF NOT EXISTS logical_ticker.tick (
+    db text DEFAULT current_database() NOT NULL PRIMARY KEY,
+    tick_time TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    tier SMALLINT DEFAULT 1 NULL
+);
+
 --As of pglogical_ticker 1.2, we don't tick tables not in replication uselessly, but this
 --would break our tests which did exactly that.  So we can fix the test breakage by just adding these tables
 --to replication as they would be on an actual provider
 SELECT pglogical_ticker.add_ticker_tables_to_replication();
 --The tests will manually run tick() before new data is needed
--- SELECT pglogical_ticker.launch();
--- SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query = 'SELECT pglogical_ticker.tick();';
 
-UPDATE fact_loader.queue_tables SET pglogical_node_if_id = (SELECT if_id FROM pglogical.node_interface);
+-- native equivalent
+ALTER PUBLICATION test1 ADD TABLE logical_ticker.tick;
+
+CREATE TEMP TABLE vars AS SELECT :'d'::text as driver, :'x'::boolean as drop_ext;
+DO $$
+DECLARE v_record RECORD;
+BEGIN
+
+IF (SELECT driver FROM vars) = 'native' THEN
+    FOR v_record IN
+        SELECT schemaname, tablename
+        FROM pg_tables
+        WHERE schemaname IN('test', 'test_audit_raw')
+    LOOP
+        EXECUTE format('ALTER PUBLICATION test1 ADD TABLE %s.%s', v_record.schemaname, v_record.tablename);
+    END LOOP;
+    CREATE OR REPLACE FUNCTION test.tick() RETURNS VOID AS $BODY$
+    BEGIN
+    INSERT INTO logical_ticker.tick (tick_time) VALUES (now()) ON CONFLICT (db) DO UPDATE SET tick_time = now();
+    END;$BODY$
+    LANGUAGE plpgsql;
+    
+    CREATE TABLE public.mock_pg_subscription (
+        oid oid NOT NULL,
+        subdbid oid NOT NULL,
+        subname name NOT NULL,
+        subowner oid NOT NULL,
+        subenabled boolean NOT NULL,
+        subconninfo text NOT NULL,
+        subslotname name NOT NULL,
+        subsynccommit text NOT NULL,
+        subpublications text[] NOT NULL
+    );
+    INSERT INTO mock_pg_subscription (oid, subdbid, subname, subowner, subenabled, subconninfo, subslotname, subsynccommit, subpublications)
+    VALUES (10000, (SELECT oid FROM pg_database WHERE datname = current_database()), 'test', 16384, true, 'host=example.com dbname=contrib_regression', 'test', 'off', '{test1}');
+
+    CREATE OR REPLACE FUNCTION fact_loader.subscription()
+    RETURNS TABLE (oid OID, subpublications text[], subconninfo text)
+    AS $BODY$
+    BEGIN
+    
+    RETURN QUERY
+    SELECT s.oid, s.subpublications, s.subconninfo FROM mock_pg_subscription s;
+    
+    END;
+    $BODY$
+    LANGUAGE plpgsql;
+    
+    CREATE TABLE public.mock_pg_subscription_rel (
+        srsubid oid NOT NULL,
+        srrelid oid NOT NULL,
+        srsubstate "char" NOT NULL,
+        srsublsn pg_lsn NOT NULL
+    );
+    INSERT INTO mock_pg_subscription_rel (srsubid, srrelid, srsubstate, srsublsn)
+    SELECT (SELECT oid FROM mock_pg_subscription LIMIT 1), c.oid, 'r', '0/0' 
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname IN('test', 'test_audit_raw') AND c.relkind = 'r';
+
+    CREATE OR REPLACE FUNCTION fact_loader.subscription_rel()
+    RETURNS TABLE (srsubid OID, srrelid OID)
+    AS $BODY$
+    BEGIN
+    
+    RETURN QUERY
+    SELECT sr.srsubid, sr.srrelid FROM mock_pg_subscription_rel sr;
+    
+    END;
+    $BODY$
+    LANGUAGE plpgsql;
+
+    IF (SELECT drop_ext FROM vars) THEN
+        DROP EXTENSION pglogical CASCADE;
+    END IF;
+    
+ELSE
+    UPDATE fact_loader.queue_tables SET pglogical_node_if_id = (SELECT if_id FROM pglogical.node_interface);
+    CREATE OR REPLACE FUNCTION test.tick() RETURNS VOID AS $BODY$
+    BEGIN
+    PERFORM pglogical_ticker.tick();
+    END;$BODY$
+    LANGUAGE plpgsql;
+END IF;
+
+END$$;
+
 
 /***
 Mock this function so that we find results locally
@@ -55,19 +153,23 @@ LANGUAGE plpgsql;
 Mock so we get what we want here also
  */
     CREATE OR REPLACE FUNCTION fact_loader.logical_subscription()
-    RETURNS TABLE (sub_origin_if OID, sub_replication_sets text[])
+    RETURNS TABLE (subid OID, subpublications text[], subconninfo text, dbname text, driver fact_loader.driver)
     AS $BODY$
     BEGIN
 
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pglogical') THEN
 
       RETURN QUERY EXECUTE $$
-      SELECT if_id AS sub_origin_if, '{test1}'::text[] as sub_replication_sets
-      FROM pglogical.node_interface;
+      SELECT if_id AS subid, '{test1}'::text[] as subpublications, null::text AS subconninfo, null::text AS dbname, 'pglogical'::fact_loader.driver AS driver
+      FROM pglogical.node_interface
+      UNION ALL
+      SELECT s.oid, s.subpublications, s.subconninfo, (regexp_matches(s.subconninfo, 'dbname=(.*?)(?=\s|$)'))[1] AS dbname, 'native'::fact_loader.driver AS driver
+      FROM fact_loader.subscription() s;
       $$;
     ELSE
       RETURN QUERY
-      SELECT NULL::OID, NULL::TEXT[];
+      SELECT s.oid, s.subpublications, s.subconninfo, (regexp_matches(s.subconninfo, 'dbname=(.*?)(?=\s|$)'))[1] AS dbname, 'native'::fact_loader.driver AS driver
+      FROM fact_loader.subscription() s;
 
     END IF;
 

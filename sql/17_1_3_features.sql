@@ -2,27 +2,14 @@ SET client_min_messages TO warning;
 --This is for testing functionality of timezone-specific timestamps
 SET TIMEZONE TO 'America/Chicago';
 
---Launch 2 workers and only display for test the number of workers launched
-SELECT array_length(fact_loader.launch_workers(2), 1);
-
---Should not work because it's too soon
-SELECT number_terminated,
-  number_still_live,
-  array_length(pids_still_live, 1) AS pids_still_live_ct
-FROM fact_loader.safely_terminate_workers();
-
---Should work because the processes should have been idle now for at least 5 seconds
-SELECT pg_sleep(6);
-SELECT number_terminated,
-  number_still_live,
-  array_length(pids_still_live, 1) AS pids_still_live_ct
-FROM fact_loader.safely_terminate_workers();
-
+-- These 2 calls replace legacy tests for background worker launches (functionality now removed)
+SELECT fact_loader.worker();
+SELECT fact_loader.worker();
 
 INSERT INTO test.orders (order_id, customer_id, order_date, total)
 VALUES ((SELECT MAX(order_id)+1 FROM test.orders) ,5, '2018-07-27', 2500.00);
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
 
 -- For some reason queue_table_id seems indeterminate so don't show it
 DO $$
@@ -47,8 +34,8 @@ ROLLBACK;
 --Test support for extension without deps (older tests for version 1.2 are removed as no longer relevant)
 BEGIN;
 DROP EXTENSION pg_fact_loader CASCADE;
-DROP EXTENSION pglogical_ticker CASCADE;
-DROP EXTENSION pglogical CASCADE;
+DROP EXTENSION IF EXISTS pglogical_ticker CASCADE;
+DROP EXTENSION IF EXISTS pglogical CASCADE;
 CREATE EXTENSION pg_fact_loader;
 DROP EXTENSION pg_fact_loader;
 ROLLBACK;

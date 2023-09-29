@@ -12,7 +12,7 @@ SELECT COUNT(1) FROM test_audit_raw.customers_audit;
      9
 (1 row)
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
  tick 
 ------
  
@@ -30,7 +30,7 @@ SELECT fact_loader.worker() FROM generate_series(1,6);
 (6 rows)
 
 --Should now handle dep fact tables
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
  tick 
 ------
  
@@ -47,7 +47,7 @@ SELECT fact_loader.worker() FROM generate_series(1,6);
  t
 (6 rows)
 
-SELECT pglogical_ticker.tick();
+SELECT test.tick();
  tick 
 ------
  
