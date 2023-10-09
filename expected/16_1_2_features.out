@@ -234,7 +234,7 @@ NOTICE:  table "process_queue" does not exist, skipping
 
 \! psql contrib_regression -c ' SELECT fact_loader.worker() INTO try2;'
 SELECT 1
-SELECT pg_sleep(2);
+SELECT pg_sleep(4);
 COMMIT
  pg_sleep 
 ----------
