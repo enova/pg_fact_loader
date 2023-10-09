@@ -1,3 +1,9 @@
+pg-fact-loader (2.0.1-1) unstable; urgency=medium
+
+  * Bug fix: Remove C functions from 2.0 extension SQL script
+
+ -- Jeremy Finzel <jfinzel@enova.com>  Mon, 09 Oct 2023 16:19:49 -0500
+
 pg-fact-loader (2.0.0-1) unstable; urgency=medium
 
   * Add support for native logical replication

@@ -197,7 +197,7 @@ ORDER BY order_id;
 \! psql contrib_regression -c 'BEGIN; SELECT fact_loader.worker() INTO try1; SELECT pg_sleep(2); COMMIT;' &
 SELECT pg_sleep(1);
 \! psql contrib_regression -c ' SELECT fact_loader.worker() INTO try2;'
-SELECT pg_sleep(2);
+SELECT pg_sleep(4);
 SELECT * FROM try1;
 SELECT * FROM try2;
 

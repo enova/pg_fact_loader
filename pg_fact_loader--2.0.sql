@@ -3,16 +3,6 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION pg_fact_loader" to load this file. \quit
 
-CREATE FUNCTION fact_loader._launch_worker(oid)
-  RETURNS pg_catalog.INT4 STRICT
-AS 'MODULE_PATHNAME', 'pg_fact_loader_worker'
-LANGUAGE C;
-
-CREATE FUNCTION fact_loader.launch_worker()
-  RETURNS pg_catalog.INT4 STRICT
-AS 'SELECT fact_loader._launch_worker(oid) FROM pg_database WHERE datname = current_database();'
-LANGUAGE SQL;
-
 CREATE TABLE fact_loader.fact_tables (
   fact_table_id SERIAL PRIMARY KEY,
   fact_table_relid REGCLASS NOT NULL,
@@ -2473,71 +2463,6 @@ INNER JOIN fact_loader.fact_table_refresh_logs ftrl
   AND ft.last_refresh_attempted_at = ftrl.refresh_attempted_at
 WHERE NOT enabled
   AND NOT last_refresh_succeeded;
-
-CREATE OR REPLACE FUNCTION fact_loader.safely_terminate_workers()
-RETURNS TABLE (number_terminated INT, number_still_live INT, pids_still_live INT[]) AS
-$BODY$
-/****
-It is not a requirement to use this function to terminate workers.  Because workers are transactional,
-you can simply terminate them and no data loss will result in pg_fact_loader.
-
-Likewise, a hard crash of any system using pg_fact_loader will recover just fine upon re-launching workers.
-
-Still, it is ideal to avoid bloat to cleanly terminate workers and restart them using this function to kill
-them, and launch_workers(int) to re-launch them.
- */
-BEGIN
-
-RETURN QUERY
-WITH try_term_pids AS (
-SELECT
-  pid,
-  CASE WHEN
-    state = 'idle' AND
-    state_change BETWEEN SYMMETRIC
-      now() - interval '5 seconds' AND
-      now() - interval '55 seconds'
-    THEN
-    pg_terminate_backend(pid)
-    ELSE FALSE
-  END AS terminated
-FROM pg_stat_activity
-WHERE usename = 'postgres'
-  AND query = 'SELECT fact_loader.worker();')
-
-SELECT SUM(CASE WHEN terminated THEN 1 ELSE 0 END)::INT AS number_terminated_out,
-  SUM(CASE WHEN NOT terminated THEN 1 ELSE 0 END)::INT AS number_still_live_out,
-  (SELECT array_agg(pid) FROM try_term_pids WHERE NOT terminated) AS pids_still_live_out
-FROM try_term_pids;
-
-END;
-$BODY$
-LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION fact_loader.launch_workers(number_to_launch int)
-RETURNS INT[] AS
-$BODY$
-DECLARE
-  v_pids INT[];
-BEGIN
-
-FOR i IN 1..number_to_launch
-LOOP
-  v_pids = array_append(v_pids, fact_loader.launch_worker());
-/*
-It's not strictly required to not launch all workers simultaneously, but it's
-also a little more invasive to do that, probably requiring more advisory lock skips.
-Better to just sleep 1 second between launches.
- */
-PERFORM pg_sleep(1);
-END LOOP;
-
-RETURN v_pids;
-
-END;
-$BODY$
-LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE VIEW fact_loader.prioritized_jobs AS
@@ -6212,10 +6137,6 @@ LEFT JOIN LATERAL
 
 DROP VIEW fact_loader.queue_deps_all_with_retrieval;
 DROP VIEW fact_loader.queue_deps_all;
-DROP FUNCTION fact_loader.safely_terminate_workers(); 
-DROP FUNCTION fact_loader.launch_workers(int);
-DROP FUNCTION fact_loader.launch_worker();
-DROP FUNCTION fact_loader._launch_worker(oid);
 DROP FUNCTION fact_loader.queue_table_delay_info();
 DROP FUNCTION fact_loader.logical_subscription();
 CREATE TYPE fact_loader.driver AS ENUM ('pglogical', 'native');
